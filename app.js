@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const encrypt = require("mongoose-encryption");
 
 const app = express();
 
@@ -10,6 +11,9 @@ const userSchema = new mongoose.Schema({
     email: String,
     password: String,
 });
+
+const secret = "thisissecretkeyitisadvisedtobelong";//key for converting to encrypting message, you can add some random string
+userSchema.plugin(encrypt, { secret: secret, encryptedFields: ["password"] });
 
 const User = new mongoose.model("User", userSchema);
 
