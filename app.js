@@ -1,7 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const md5 = require("md5");
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 
@@ -27,15 +28,21 @@ app.get("/register", function (req, res) {
 });
 
 app.post("/register", function (req, res) {
-    const newUser = new User({
-        email: req.body.username,
-        password: md5(req.body.password)
-    });
-    newUser.save(function (err) {
+    bcrypt.hash(req.body.password, saltRounds, function (err, hashedPassword) {
         if (err) {
-            console.log(err);
+            console.log("bcrypt hashing failed");
         } else {
-            res.render("secrets");
+            const newUser = new User({
+                email: req.body.username,
+                password: hashedPassword
+            });
+            newUser.save(function (err) {
+                if (err) {
+                    console.log(err);
+                } else {
+                    res.render("secrets");
+                }
+            });
         }
     });
 });
@@ -53,10 +60,19 @@ app.post("/login", function (req, res) {
         } else {
             if (foundUser == null) {
                 res.send("Invalid email ID try again");
-            } else if (foundUser.password == md5(password)) {
-                res.render("secrets");
             } else {
-                res.send("Invalid password try again");
+                bcrypt.compare(password, foundUser.password, function (err, result) {
+                    // result == true
+                    if (err) {
+                        console.log("hashing failed in login bcrypt");
+                    } else {
+                        if (result == true) {
+                            res.render("secrets");
+                        } else {
+                            res.send("Invalid password try again");
+                        }
+                    }
+                });
             }
         }
     });
