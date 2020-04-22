@@ -33,7 +33,8 @@ mongoose.set("useCreateIndex", true);
 const userSchema = new mongoose.Schema({
     username: String,//changed schema here from email to username
     password: String,
-    googleId: String
+    googleId: String,
+    secret: String// field to store secret
 });
 
 //insert the plugin in schema i.e passportlocalmongoose
@@ -63,7 +64,7 @@ passport.use(new GoogleStrategy({
     userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
 },
     function (accessToken, refreshToken, profile, cb) {
-        console.log(profile);
+        // console.log(profile);
         User.findOrCreate({ googleId: profile.id }, function (err, user) {
             return cb(err, user);
         });
@@ -75,12 +76,40 @@ app.get("/", function (req, res) {
 });
 
 app.get("/secrets", function (req, res) {
-    console.log(req.isAuthenticated());
+    User.find({ "secret": { $ne: null } }, function (err, foundUsers) {
+        if (err) {
+            console.log(err);
+        } else {
+            if (foundUsers) {
+                res.render("secrets", { usersWithSecrets: foundUsers });
+            }
+        }
+    });
+});
+
+app.get("/submit", function (req, res) {
     if (req.isAuthenticated()) {
-        res.render("secrets");
+        res.render("submit");
     } else {
         res.redirect("/login");
     }
+});
+
+app.post("/submit", function (req, res) {
+    // console.log(req.user.id);
+    const submittedSecret = req.body.secret;
+    User.findById(req.user.id, function (err, foundUser) {
+        if (err) {
+            console.log(err);
+        } else {
+            if (foundUser) {
+                foundUser.secret = submittedSecret;
+                foundUser.save(function () {
+                    res.redirect("/secrets");
+                });
+            }
+        }
+    });
 });
 
 //i don't know the reason but put google in single quotes otherwise sessions will not save
